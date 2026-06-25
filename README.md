@@ -1,4 +1,4 @@
-<h1 align="center">Agendum Data</h1>
+<h1 align="center">AgendumData</h1>
 
 <p align="center">
   <strong>The headless CRM that boots as a database and talks like an API.</strong><br>
@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <em>REST · GraphQL · MCP — batteries included, schema not required.</em>
+  <em>GraphQL · MCP — batteries included, schema not required.</em>
 </p>
 
 ---
@@ -24,7 +24,7 @@ You don't design the backend. You `docker compose up` the backend.
 
 - 🧠 **Headless by design** — no opinionated UI in the way. Your frontend, your rules.
 - 📦 **90% pre-modeled** — the most common business entities and flows ship ready to use.
-- 🔌 **Three APIs, one engine** — REST, **GraphQL**, and an **MCP server** by default.
+- 🔌 **Three APIs, one engine** — **GraphQL**, and an **MCP server** by default.
 - 🤖 **LLM-native** — the built-in **Model Context Protocol** server lets agents read & write your data.
 - 🐬 **Just add MariaDB** — persistence is a container, not a project.
 - 🚀 **Zero-to-running** — one `curl`, one `docker compose up`. No build step.
@@ -33,7 +33,7 @@ You don't design the backend. You `docker compose up` the backend.
 
 | Service             | URL                              | What it is                          |
 |---------------------|----------------------------------|-------------------------------------|
-| Agendum Data API    | http://localhost:8800            | REST · GraphQL · MCP endpoint        |
+| Agendum Data API    | http://localhost:8800            | GraphQL · MCP endpoint        |
 | GraphQL Explorer    | http://localhost:8801            | Interactive GraphQL playground       |
 
 ---
