@@ -107,10 +107,10 @@ wait-api: ## Block until the API container answers (boot splash)
 	done; echo " ok"
 
 .PHONY: wait-boot
-wait-boot: ## Block until the app finishes booting (past the "starting" splash)
+wait-boot: ## Block until the app is fully booted (llms.txt manifest served)
 	@echo "==> Waiting for Agendum to finish booting (up to $(WAIT_TIMEOUT)s)"
 	@end=$$(( $$(date +%s) + $(WAIT_TIMEOUT) )); \
-	while curl -s "$(API_URL)/" | grep -qi '<title>[^<]*starting'; do \
+	until [ "$$(curl -s -o /dev/null -w '%{http_code}' "$(API_URL)/llms.txt")" = "200" ]; do \
 		if [ $$(date +%s) -ge $$end ]; then \
 			echo "❌  app still booting after $(WAIT_TIMEOUT)s"; $(DC) logs $(SERVICE); exit 1; \
 		fi; \
@@ -129,9 +129,9 @@ wait-explorer: ## Block until the GraphQL Explorer answers
 	done; echo " ok"
 
 .PHONY: check-api
-check-api: ## Probe the REST API endpoint
+check-api: ## Probe the API root
 	@code=$$(curl -s -o /dev/null -w '%{http_code}' "$(API_URL)"); \
-	echo "    REST API         $(API_URL)  ->  HTTP $$code"; \
+	echo "    API root         $(API_URL)  ->  HTTP $$code"; \
 	case $$code in 2*|3*|4*) ;; *) echo "❌  API unreachable"; exit 1;; esac
 
 .PHONY: check-graphql
