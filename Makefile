@@ -5,15 +5,19 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 COMPOSE_URL  ?= https://raw.githubusercontent.com/AgendumData/docker/main/docker-compose.yml
-BUILD_DIR    ?= .agendum
+BUILD_DIR    ?= .agendum-data
 COMPOSE_FILE := $(BUILD_DIR)/docker-compose.yml
-PROJECT      ?= agendum-quickstart
-
-DC           := docker compose -p $(PROJECT) -f $(COMPOSE_FILE)
 SERVICE      ?= agendum
+
+# Every docker compose call runs from inside $(BUILD_DIR), so the commands are
+# the plain ones you can reproduce by hand:  cd $(BUILD_DIR) && docker compose ...
+# (default project name + default compose file — nothing to remember).
 
 API_URL      ?= http://localhost:8800
 EXPLORER_URL ?= http://localhost:8801
+
+# Exact version string the running image must expose at /version.txt.
+EXPECTED_VERSION ?= agendum-0.1.0
 
 # How long to wait for a service to answer before giving up (seconds).
 WAIT_TIMEOUT ?= 120
@@ -54,117 +58,40 @@ $(COMPOSE_FILE):
 .PHONY: up
 up: download ## Download + start the stack in the background
 	@echo "==> Starting Agendum Data stack"
-	@$(DC) up -d
+	@cd $(BUILD_DIR) && docker compose up -d
 	@echo "==> API:      $(API_URL)"
 	@echo "==> Explorer: $(EXPLORER_URL)"
 
 .PHONY: migrate
 migrate: ## Run the first-time database migration (creates all tables)
-	@echo "==> Migrating database (first-run); retrying until the DB is ready"
-	@end=$$(( $$(date +%s) + $(WAIT_TIMEOUT) )); \
-	until $(DC) exec -T $(SERVICE) migrate; do \
-		if [ $$(date +%s) -ge $$end ]; then \
-			echo "❌  migration did not complete in $(WAIT_TIMEOUT)s"; $(DC) logs $(SERVICE); exit 1; \
-		fi; \
-		echo "    ...database not ready yet, retrying"; sleep 3; \
-	done
+	@echo "==> Migrating database (first-run)"
+	@cd $(BUILD_DIR) && docker compose exec -T $(SERVICE) migrate --wait-database
 
 .PHONY: down
 down: ## Stop and remove the stack (keeps volumes)
-	@if [ -f $(COMPOSE_FILE) ]; then $(DC) down; else echo "Nothing to stop."; fi
+	@if [ -f $(COMPOSE_FILE) ]; then cd $(BUILD_DIR) && docker compose down --remove-orphans; else echo "Nothing to stop."; fi
 
 .PHONY: logs
 logs: ## Tail the stack logs
-	@$(DC) logs -f
+	@cd $(BUILD_DIR) && docker compose logs -f
 
 .PHONY: ps
 ps: ## Show running services
-	@$(DC) ps
+	@cd $(BUILD_DIR) && docker compose ps
 
 # ── test ─────────────────────────────────────────────────────────────────────
 
 .PHONY: test
-test: up wait-api migrate wait-boot wait-explorer ## Full quickstart smoke test (download → run → migrate → verify)
-	@echo ""
-	@echo "==> Verifying the README claims"
-	@$(MAKE) --no-print-directory check-api
-	@$(MAKE) --no-print-directory check-graphql
-	@$(MAKE) --no-print-directory check-mcp
-	@$(MAKE) --no-print-directory check-llms
-	@$(MAKE) --no-print-directory check-explorer
-	@echo ""
-	@echo "✅  Agendum Data quickstart verified — everything in the README works."
-
-.PHONY: wait-api
-wait-api: ## Block until the API container answers (boot splash)
-	@echo "==> Waiting for the API at $(API_URL) (up to $(WAIT_TIMEOUT)s)"
-	@end=$$(( $$(date +%s) + $(WAIT_TIMEOUT) )); \
-	until curl -fsS -o /dev/null "$(API_URL)"; do \
-		if [ $$(date +%s) -ge $$end ]; then \
-			echo "❌  API did not come up in $(WAIT_TIMEOUT)s"; $(DC) logs $(SERVICE); exit 1; \
-		fi; \
-		printf '.'; sleep 2; \
-	done; echo " ok"
-
-.PHONY: wait-boot
-wait-boot: ## Block until the app is fully booted (llms.txt manifest served)
-	@echo "==> Waiting for Agendum to finish booting (up to $(WAIT_TIMEOUT)s)"
-	@end=$$(( $$(date +%s) + $(WAIT_TIMEOUT) )); \
-	until [ "$$(curl -s -o /dev/null -w '%{http_code}' "$(API_URL)/llms.txt")" = "200" ]; do \
-		if [ $$(date +%s) -ge $$end ]; then \
-			echo "❌  app still booting after $(WAIT_TIMEOUT)s"; $(DC) logs $(SERVICE); exit 1; \
-		fi; \
-		printf '.'; sleep 2; \
-	done; echo " ok"
-
-.PHONY: wait-explorer
-wait-explorer: ## Block until the GraphQL Explorer answers
-	@echo "==> Waiting for the GraphQL Explorer at $(EXPLORER_URL) (up to $(WAIT_TIMEOUT)s)"
-	@end=$$(( $$(date +%s) + $(WAIT_TIMEOUT) )); \
-	until curl -fsS -o /dev/null "$(EXPLORER_URL)"; do \
-		if [ $$(date +%s) -ge $$end ]; then \
-			echo "❌  Explorer did not come up in $(WAIT_TIMEOUT)s"; $(DC) logs graphql-explorer; exit 1; \
-		fi; \
-		printf '.'; sleep 2; \
-	done; echo " ok"
-
-.PHONY: check-api
-check-api: ## Probe the API root
-	@code=$$(curl -s -o /dev/null -w '%{http_code}' "$(API_URL)"); \
-	echo "    API root         $(API_URL)  ->  HTTP $$code"; \
-	case $$code in 2*|3*|4*) ;; *) echo "❌  API unreachable"; exit 1;; esac
-
-.PHONY: check-graphql
-check-graphql: ## Probe the GraphQL endpoint with an introspection query
-	@code=$$(curl -s -o /dev/null -w '%{http_code}' \
-		-X POST "$(API_URL)/graphql" \
-		-H 'Content-Type: application/json' \
-		--data '{"query":"{ __typename }"}'); \
-	echo "    GraphQL API      $(API_URL)/graphql  ->  HTTP $$code"; \
-	case $$code in 2*) ;; *) echo "❌  GraphQL endpoint not healthy"; exit 1;; esac
-
-.PHONY: check-mcp
-check-mcp: ## Probe the MCP server endpoint
-	@code=$$(curl -s -o /dev/null -w '%{http_code}' "$(API_URL)/mcp"); \
-	echo "    MCP server       $(API_URL)/mcp  ->  HTTP $$code"; \
-	case $$code in 2*|3*|4*) ;; *) echo "❌  MCP endpoint unreachable"; exit 1;; esac
-
-.PHONY: check-llms
-check-llms: ## Probe the self-describing llms.txt manifest
-	@code=$$(curl -s -o /dev/null -w '%{http_code}' "$(API_URL)/llms.txt"); \
-	echo "    llms.txt         $(API_URL)/llms.txt  ->  HTTP $$code"; \
-	case $$code in 2*) ;; *) echo "❌  llms.txt not served"; exit 1;; esac
-
-.PHONY: check-explorer
-check-explorer: ## Probe the GraphQL Explorer UI
-	@code=$$(curl -s -o /dev/null -w '%{http_code}' "$(EXPLORER_URL)"); \
-	echo "    GraphQL Explorer $(EXPLORER_URL)  ->  HTTP $$code"; \
-	case $$code in 2*|3*) ;; *) echo "❌  Explorer unreachable"; exit 1;; esac
+test: up ## Full quickstart smoke test (download → run → migrate → verify)
+	@BUILD_DIR='$(BUILD_DIR)' SERVICE='$(SERVICE)' \
+		API_URL='$(API_URL)' EXPLORER_URL='$(EXPLORER_URL)' \
+		EXPECTED_VERSION='$(EXPECTED_VERSION)' WAIT_TIMEOUT='$(WAIT_TIMEOUT)' \
+		bash test.sh
 
 # ── cleanup ──────────────────────────────────────────────────────────────────
 
 .PHONY: clean
 clean: ## Stop the stack, drop volumes, remove the downloaded compose file
-	@if [ -f $(COMPOSE_FILE) ]; then $(DC) down -v --remove-orphans; fi
+	@if [ -f $(COMPOSE_FILE) ]; then cd $(BUILD_DIR) && docker compose down -v --remove-orphans; fi
 	@rm -rf $(BUILD_DIR)
 	@echo "==> Cleaned up containers, volumes and $(BUILD_DIR)"

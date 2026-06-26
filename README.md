@@ -31,10 +31,10 @@ You don't design the backend. You `docker compose up` the backend.
 
 ## `> ports`
 
-| Service             | URL                              | What it is                          |
-|---------------------|----------------------------------|-------------------------------------|
-| Agendum Data API    | http://localhost:8800            | GraphQL · MCP endpoint        |
-| GraphQL Explorer    | http://localhost:8801            | Interactive GraphQL playground       |
+| Service             | URL                              | What it is                     |
+|---------------------|----------------------------------|--------------------------------|
+| Agendum Data API    | http://localhost:8800            | GraphQL · MCP endpoint         |
+| GraphQL Explorer    | http://localhost:8801            | Interactive GraphQL playground |
 
 ---
 
