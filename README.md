@@ -154,46 +154,6 @@ available in the session with zero setup:
 - **`agendum-data_crm_data_graphql`** — read and mutate day-to-day business data
   (records, comments, emails, tags, dashboards, imports, …).
 
-### Quick start
-
-```bash
-# 1. Boot the stack (first run: also run `docker compose exec agendum migrate`)
-docker compose up -d
-
-# 2. Open the project in opencode
-opencode
-```
-
-That's it — the agent can now query modules, create records and explore the data
-through the MCP server. For example, try asking it in plain language:
-
-```text
-List all the CRM modules, then create a contact named Francesco Bianco.
-```
-
-### Creating the file from scratch
-
-If your fork doesn't have it yet, create `opencode.json` at the repo root:
-
-```bash
-cat > opencode.json <<'EOF'
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "agendum-data": {
-      "type": "remote",
-      "url": "http://localhost:8800/mcp",
-      "enabled": true
-    }
-  }
-}
-EOF
-```
-
-> ⚠️ The `remote` type points at an HTTP URL (the project's MCP endpoint). The
-> stack must be running on `localhost:8800` for the tools to work; if the
-> container is down the tools will simply fail to connect.
-
 ---
 
 <p align="center"><sub>MIT Licensed · © 2026 AgendumData · Made for people who'd rather model deals than tables.</sub></p>
