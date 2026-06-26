@@ -73,7 +73,11 @@ down: ## Stop and remove the stack (keeps volumes)
 
 .PHONY: logs
 logs: ## Tail the stack logs
-	@cd $(BUILD_DIR) && docker compose logs -f
+	@cd $(BUILD_DIR) && docker compose logs -f agendum
+
+.PHONY: shell
+shell: ## Tail the stack logs
+	@cd $(BUILD_DIR) && docker compose exec agendum bash
 
 .PHONY: ps
 ps: ## Show running services
