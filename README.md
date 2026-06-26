@@ -122,6 +122,78 @@ see the whole flow working end to end.
 
 That's the whole point: describe the business, and the 90% that's already modeled does the rest.
 
+## `> use-with-opencode` — drive the CRM from agencode's CLI
+
+[opencode](https://opencode.ai) is an interactive CLI coding agent. This project
+ships with an [`opencode.json`](./opencode.json) file so the MCP server is wired up
+the moment you open the repo in opencode — no extra configuration needed.
+
+### The `opencode.json` file
+
+The file lives at the repository root and registers the `agendum-data` MCP server:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "agendum-data": {
+      "type": "remote",
+      "url": "http://localhost:8800/mcp",
+      "enabled": true
+    }
+  }
+}
+```
+
+opencode auto-loads any `opencode.json` in the workspace, so once the stack is up
+(see [`> get-started`](#-get-started)) the two `agendum-data` MCP tools are
+available in the session with zero setup:
+
+- **`agendum-data_crm_config_graphql`** — inspect/shape how the CRM behaves
+  (modules, metadata, settings, admin operations).
+- **`agendum-data_crm_data_graphql`** — read and mutate day-to-day business data
+  (records, comments, emails, tags, dashboards, imports, …).
+
+### Quick start
+
+```bash
+# 1. Boot the stack (first run: also run `docker compose exec agendum migrate`)
+docker compose up -d
+
+# 2. Open the project in opencode
+opencode
+```
+
+That's it — the agent can now query modules, create records and explore the data
+through the MCP server. For example, try asking it in plain language:
+
+```text
+List all the CRM modules, then create a contact named Francesco Bianco.
+```
+
+### Creating the file from scratch
+
+If your fork doesn't have it yet, create `opencode.json` at the repo root:
+
+```bash
+cat > opencode.json <<'EOF'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "agendum-data": {
+      "type": "remote",
+      "url": "http://localhost:8800/mcp",
+      "enabled": true
+    }
+  }
+}
+EOF
+```
+
+> ⚠️ The `remote` type points at an HTTP URL (the project's MCP endpoint). The
+> stack must be running on `localhost:8800` for the tools to work; if the
+> container is down the tools will simply fail to connect.
+
 ---
 
 <p align="center"><sub>MIT Licensed · © 2026 AgendumData · Made for people who'd rather model deals than tables.</sub></p>
